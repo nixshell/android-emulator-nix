@@ -1,0 +1,5 @@
+.android/
+.codex
+.direnv/
+local.properties
+result

@@ -1,0 +1,10 @@
+❯ sdkmanager --list_installed | rg 'system-images|emulator|platforms'
+  emulator                                                     | 36.6.3  | Android Emulator                                        | emulator
+  platforms;android-32                                         | 1       | Android SDK Platform 32                                 | platforms/android-32
+  platforms;android-33                                         | 3       | Android SDK Platform 33                                 | platforms/android-33
+  system-images;android-32;android-automotive-playstore;x86_64 | 2       | Android Automotive with Google Play x86_64 System Image | system-images/android-32/android-automotive-playstore/x86_64
+  system-images;android-33;android-automotive;x86_64           | 5       | Android Automotive with Google APIs x86_64 System Image | system-images/android-33/android-automotive/x86_64
+❯   avdmanager create avd \
+    --name a32 \
+    --device "automotive_1408p_landscape_with_google_apis" \
+    --package 'system-images;android-32;android-automotive-playstore;x86_64'

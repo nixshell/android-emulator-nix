@@ -1,0 +1,118 @@
+{
+  "checkedAt": "2026-04-12T08:01:26Z",
+  "sourceUrl": "https://dl.google.com/android/repository/repository2-3.xml",
+  "overlayPath": "android-emulator-overlay.json",
+  "overlayLatestBefore": "36.5.10",
+  "overlayLatestAfter": "36.5.10",
+  "newestStable": "36.5.10",
+  "newestPreview": "36.6.3",
+  "newVersions": [
+
+  ],
+  "changedVersions": [
+    "36.5.10"
+  ],
+  "removedVersions": [
+
+  ],
+  "availableVersions": {
+    "36.6.3": {
+      "channel": {
+        "id": "channel-2",
+        "name": "dev"
+      },
+      "displayName": "Android Emulator",
+      "license": "android-sdk-preview-license",
+      "revision": "36.6.3",
+      "revision-details": {
+        "major:0": "36",
+        "minor:1": "6",
+        "micro:2": "3"
+      },
+      "type-details": {
+        "element-attributes": {
+          "xsi:type": "ns5:genericDetailsType"
+        }
+      },
+      "archives": [
+        {
+          "arch": "x64",
+          "os": "linux",
+          "sha1": "4d1ddbbcc6d708fd933b08931163182e0e205ad0",
+          "size": 347008218,
+          "url": "https://dl.google.com/android/repository/emulator-linux_x64-15142779.zip"
+        },
+        {
+          "arch": "x64",
+          "os": "macosx",
+          "sha1": "a3718deefc7d16ef3376626807cebcadb73ca5f4",
+          "size": 462646251,
+          "url": "https://dl.google.com/android/repository/emulator-darwin_x64-15142779.zip"
+        },
+        {
+          "arch": "aarch64",
+          "os": "macosx",
+          "sha1": "a46e8160288ff40dd2768536fa70f2d5f13a67ce",
+          "size": 396370301,
+          "url": "https://dl.google.com/android/repository/emulator-darwin_aarch64-15142779.zip"
+        },
+        {
+          "arch": "x64",
+          "os": "windows",
+          "sha1": "8f5ff31b854cf4f9eaf15c1b571148240edfcaf4",
+          "size": 428894868,
+          "url": "https://dl.google.com/android/repository/emulator-windows_x64-15142779.zip"
+        }
+      ]
+    },
+    "36.5.10": {
+      "channel": {
+        "id": "channel-0",
+        "name": "stable"
+      },
+      "displayName": "Android Emulator",
+      "license": "android-sdk-license",
+      "revision": "36.5.10",
+      "revision-details": {
+        "major:0": "36",
+        "minor:1": "5",
+        "micro:2": "10"
+      },
+      "type-details": {
+        "element-attributes": {
+          "xsi:type": "ns5:genericDetailsType"
+        }
+      },
+      "archives": [
+        {
+          "arch": "x64",
+          "os": "linux",
+          "sha1": "9f03296214df837c608d0d101e5e03ebcebb4343",
+          "size": 331543272,
+          "url": "https://dl.google.com/android/repository/emulator-linux_x64-15081367.zip"
+        },
+        {
+          "arch": "x64",
+          "os": "macosx",
+          "sha1": "3ad9f81115436aed6b4feb76f8e5d3e356f2f6e0",
+          "size": 449808912,
+          "url": "https://dl.google.com/android/repository/emulator-darwin_x64-15081367.zip"
+        },
+        {
+          "arch": "aarch64",
+          "os": "macosx",
+          "sha1": "0093f579e798c91b589a8d7bc84e1ca7ee528624",
+          "size": 384550690,
+          "url": "https://dl.google.com/android/repository/emulator-darwin_aarch64-15081367.zip"
+        },
+        {
+          "arch": "x64",
+          "os": "windows",
+          "sha1": "1d5cc76415b9717cec08694d171ceb526b1dedb7",
+          "size": 418622111,
+          "url": "https://dl.google.com/android/repository/emulator-windows_x64-15081367.zip"
+        }
+      ]
+    }
+  }
+}

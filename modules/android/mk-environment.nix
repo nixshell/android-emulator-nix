@@ -15,13 +15,10 @@ in
   mkAndroidEnvironment =
     {
       platformVersions ? [
-        "35"
         "36"
-        "latest"
       ],
       buildToolsVersion ? "latest",
       extraBuildToolsVersions ? [
-        "35.0.0"
         "36.0.0"
       ],
       cmdLineToolsVersion ? "latest",
@@ -174,7 +171,7 @@ in
             });
       androidSdk = androidComposition.androidsdk;
       sdkDir = "${androidSdk}/libexec/android-sdk";
-      jdk = pkgs.jetbrains.jdk;
+      jdk = pkgs.jetbrains.jdk-21;
 
       runtimeSdkLayoutVersion = "3";
       runtimeAndroidSdk =

@@ -37,14 +37,14 @@
 
           devShells.sdk = config.android.mkShell {
             extraBuildToolsVersions = [
-              "34.0.0"
-              "35.0.0"
-              "36.0.0"
+              # "34.0.0"
+              # "35.0.0"
+              # "36.0.0"
             ];
             platformVersions = [
-              "33"
-              "34"
-              "36"
+              # "33"
+              # "34"
+              # "36"
             ];
             systemImageTypes = [ ];
             includeExtras = [ "extras;google;auto" ];

@@ -38,6 +38,9 @@ in
       abiVersion ? defaultAbiVersion,
       androidUserHome ? "$HOME/.android",
       androidAvdHome ? "$HOME/.android/avd",
+      # JDK used for JAVA_HOME / the dev shell. Override from consumers, e.g.
+      # `jdk = pkgs.jdk17;` (kapt-based builds require JDK 17 — JDK 21 breaks it).
+      jdk ? pkgs.jetbrains.jdk-21,
     }:
     let
       repo = builtins.fromJSON (builtins.readFile repoJson);
@@ -177,7 +180,6 @@ in
             });
       androidSdk = androidComposition.androidsdk;
       sdkDir = "${androidSdk}/libexec/android-sdk";
-      jdk = pkgs.jetbrains.jdk-21;
 
       runtimeAndroidSdk =
         if customEmulator == null then

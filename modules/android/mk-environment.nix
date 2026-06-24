@@ -6,11 +6,9 @@
 let
   defaultAbiVersion =
     if pkgs.stdenv.hostPlatform.isAarch64 then "arm64-v8a" else "x86_64";
-
-  sanitizeName = value: lib.replaceStrings [ "." "_" ] [ "-" "-" ] value;
 in
 {
-  inherit defaultAbiVersion sanitizeName;
+  inherit defaultAbiVersion;
 
   mkAndroidEnvironment =
     {
@@ -27,6 +25,9 @@ in
       includeNdk ? true,
       ndkVersion ? "latest",
       ndkVersions ? [ ndkVersion ],
+      includeCmake ? true,
+      cmakeVersion ? "latest",
+      cmakeVersions ? [ cmakeVersion ],
       includeSources ? true,
       includeSystemImages ? null,
       systemImageTypes ? [ ],
@@ -67,6 +68,7 @@ in
       );
       resolvedNdkVersion = resolveRepoVersion "ndk" ndkVersion;
       resolvedNdkVersions = lib.unique (map (resolveRepoVersion "ndk") ndkVersions);
+      resolvedCmakeVersions = lib.unique (map (resolveRepoVersion "cmake") cmakeVersions);
       sourcePlatformsAvailable = builtins.attrNames (repo.packages.sources or { });
       missingSourcePlatforms = builtins.filter (
         platformVersion: !(builtins.elem platformVersion sourcePlatformsAvailable)
@@ -93,6 +95,7 @@ in
         buildToolsVersions = resolvedBuildToolsVersions;
         ndkVersion = resolvedNdkVersion;
         ndkVersions = resolvedNdkVersions;
+        cmakeVersions = if includeCmake then resolvedCmakeVersions else [ ];
         abiVersions = [ abiVersion ];
 
         includeSystemImages = effectiveIncludeSystemImages;
@@ -176,13 +179,12 @@ in
       sdkDir = "${androidSdk}/libexec/android-sdk";
       jdk = pkgs.jetbrains.jdk-21;
 
-      runtimeSdkLayoutVersion = "3";
       runtimeAndroidSdk =
         if customEmulator == null then
           sdkDir
         else
           pkgs.runCommandLocal
-            "android-sdk-runtime-${sanitizeName resolvedEmulatorVersion}-${sanitizeName resolvedCmdLineToolsVersion}-v${runtimeSdkLayoutVersion}"
+            "android-sdk"
             { }
             ''
               mkdir -p "$out"
@@ -201,7 +203,7 @@ in
             '';
 
       wrappedAndroidTools = pkgs.runCommandLocal
-        "android-tools-${sanitizeName resolvedEmulatorVersion}-${sanitizeName resolvedCmdLineToolsVersion}-v${runtimeSdkLayoutVersion}"
+        "android-tools"
         { }
         ''
           mkdir -p "$out/bin"
@@ -288,6 +290,7 @@ in
         platformTools
         renameEmulatorModel
         resolvedBuildToolsVersions
+        resolvedCmakeVersions
         missingSourcePlatforms
         resolvedEmulatorVersion
         resolvedPlatformVersions

@@ -24,8 +24,9 @@ in
       cmdLineToolsVersion ? "latest",
       includeEmulator ? true,
       emulatorVersion ? "latest",
-      includeNdk ? false,
+      includeNdk ? true,
       ndkVersion ? "latest",
+      ndkVersions ? [ ndkVersion ],
       includeSources ? true,
       includeSystemImages ? null,
       systemImageTypes ? [ ],
@@ -65,6 +66,7 @@ in
         map (resolveRepoVersion "build-tools") ([ buildToolsVersion ] ++ extraBuildToolsVersions)
       );
       resolvedNdkVersion = resolveRepoVersion "ndk" ndkVersion;
+      resolvedNdkVersions = lib.unique (map (resolveRepoVersion "ndk") ndkVersions);
       sourcePlatformsAvailable = builtins.attrNames (repo.packages.sources or { });
       missingSourcePlatforms = builtins.filter (
         platformVersion: !(builtins.elem platformVersion sourcePlatformsAvailable)
@@ -90,6 +92,7 @@ in
         platformVersions = resolvedPlatformVersions;
         buildToolsVersions = resolvedBuildToolsVersions;
         ndkVersion = resolvedNdkVersion;
+        ndkVersions = resolvedNdkVersions;
         abiVersions = [ abiVersion ];
 
         includeSystemImages = effectiveIncludeSystemImages;

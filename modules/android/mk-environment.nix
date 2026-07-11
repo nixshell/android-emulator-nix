@@ -318,6 +318,17 @@ in
         '';
       };
 
+      tracebox = pkgs.callPackage ../../pkgs/tracebox.nix { };
+
+      perfettoBridge = pkgs.writeShellApplication {
+        name = "perfetto-bridge";
+        text = ''
+          adb start-server
+          echo "Bridge for https://ui.perfetto.dev (ws://127.0.0.1:8037/adb); Ctrl-C to stop."
+          exec ${tracebox}/bin/tracebox websocket_bridge
+        '';
+      };
+
       localProp = ''
         mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
         cat > local.properties <<EOF
@@ -364,6 +375,8 @@ in
             resizeAvd
             cloneAvd
             avdConfig
+            tracebox
+            perfettoBridge
             wrappedAndroidTools
           ]
           ++ lib.optional (customEmulator != null) customEmulator

@@ -190,6 +190,20 @@ window with the extra displays in Extended Controls. `refresh-avds --apply`
 preserves `hw.display*`, `hw.multi_display_window`, and
 `disk.dataPartition.size` when recreating an AVD.
 
+### 10. Trace with Perfetto
+
+The shell ships Perfetto's `tracebox` (pinned in
+[pkgs/tracebox.nix](pkgs/tracebox.nix)) and a `perfetto-bridge` command that
+starts the adb WebSocket bridge for the Perfetto UI:
+
+```bash
+perfetto-bridge
+```
+
+Then open <https://ui.perfetto.dev>, and under "Record new trace" the running
+devices/emulators appear via the WebSocket connection
+(`ws://127.0.0.1:8037/adb`). Ctrl-C stops the bridge.
+
 ## Docs
 
 - [avdmanager.md](avdmanager.md) — `avdmanager` reference and AVD workflow

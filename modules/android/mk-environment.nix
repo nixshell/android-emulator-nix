@@ -310,6 +310,14 @@ in
         '';
       };
 
+      avdConfig = pkgs.writeShellApplication {
+        name = "avd-config";
+        runtimeInputs = [ pkgs.ruby ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/avd-config.rb} "$@"
+        '';
+      };
+
       localProp = ''
         mkdir -p "$ANDROID_USER_HOME" "$ANDROID_AVD_HOME"
         cat > local.properties <<EOF
@@ -355,6 +363,7 @@ in
             refreshAvds
             resizeAvd
             cloneAvd
+            avdConfig
             wrappedAndroidTools
           ]
           ++ lib.optional (customEmulator != null) customEmulator

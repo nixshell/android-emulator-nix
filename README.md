@@ -172,6 +172,24 @@ ADB sees them as `emulator-5554` and `emulator-5556` (see
 of the *same* AVD without cloning, `emulator -avd a32 -read-only` also works,
 but its changes are discarded on exit.
 
+### 9. Change AVD settings in bulk
+
+`avd-config` reads or sets `config.ini` values across all AVDs (or selected
+ones with `--avd NAME`). Changes take effect on the next cold boot:
+
+```bash
+avd-config --get hw.multi_display_window
+avd-config --set hw.multi_display_window=yes     # each display in its own window
+avd-config --avd a33a --set hw.multi_display_window=no
+```
+
+Multi-display AVDs (e.g. automotive: head unit, cluster, passenger screens)
+define their screens as `hw.displayN.*` blocks in `config.ini`;
+`hw.multi_display_window` picks between one window per display or a single
+window with the extra displays in Extended Controls. `refresh-avds --apply`
+preserves `hw.display*`, `hw.multi_display_window`, and
+`disk.dataPartition.size` when recreating an AVD.
+
 ## Docs
 
 - [avdmanager.md](avdmanager.md) — `avdmanager` reference and AVD workflow

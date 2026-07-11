@@ -70,7 +70,14 @@ def same_image_elsewhere?(recorded, current_real)
   old_dirs.uniq.all? { |old_dir| dirs_equivalent?(old_dir, current_real) }
 end
 
-PRESERVED_CONFIG_KEYS = ["disk.dataPartition.size"].freeze
+PRESERVED_CONFIG_KEYS = ["disk.dataPartition.size", "hw.multi_display_window"].freeze
+PRESERVED_CONFIG_PREFIXES = ["hw.display"].freeze
+
+def preserved_config(config)
+  config.select do |key, _|
+    PRESERVED_CONFIG_KEYS.include?(key) || PRESERVED_CONFIG_PREFIXES.any? { |prefix| key.start_with?(prefix) }
+  end
+end
 
 def sdcard_argument(config)
   value = config["sdcard.size"]
@@ -197,7 +204,7 @@ Dir.glob(File.join(avd_home, "*.ini")).sort.each do |ini_path|
       package: package,
       device: config["hw.device.name"],
       sdcard: sdcard_argument(config),
-      preserved: config.slice(*PRESERVED_CONFIG_KEYS),
+      preserved: preserved_config(config),
     }
   else
     rows << [name, "ok (matches current image)#{seeded_note}"]

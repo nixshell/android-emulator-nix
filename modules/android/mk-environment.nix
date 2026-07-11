@@ -35,6 +35,7 @@ in
       includeExtras ? [ ],
       repoJson ? defaultRepoJson,
       repoXmls ? null,
+      contentAddressedSystemImages ? false,
       abiVersion ? defaultAbiVersion,
       androidUserHome ? "$HOME/.android",
       androidAvdHome ? "$HOME/.android/avd",
@@ -181,8 +182,16 @@ in
       androidSdk = androidComposition.androidsdk;
       sdkDir = "${androidSdk}/libexec/android-sdk";
 
+      useCaSystemImages = contentAddressedSystemImages && effectiveIncludeSystemImages;
+
+      caSystemImages = pkgs.runCommand "android-system-images-ca" {
+        __contentAddressed = true;
+        outputHashAlgo = "sha256";
+        outputHashMode = "recursive";
+      } ''cp -rL --reflink=auto ${androidSdk}/libexec/android-sdk/system-images "$out"'';
+
       runtimeAndroidSdk =
-        if customEmulator == null then
+        if customEmulator == null && !useCaSystemImages then
           sdkDir
         else
           pkgs.runCommandLocal
@@ -194,14 +203,20 @@ in
               for sdkEntry in ${androidSdk}/libexec/android-sdk/*; do
                   sdkEntryBase="$(basename "$sdkEntry")"
                   case "$sdkEntryBase" in
-                      cmdline-tools|emulator) ;;
+                      cmdline-tools) ;;
+                      ${lib.optionalString (customEmulator != null) "emulator) ;;"}
+                      ${lib.optionalString useCaSystemImages "system-images) ;;"}
                       *) ln -s "$sdkEntry" "$out/$sdkEntryBase" ;;
                   esac
               done
 
+              ${lib.optionalString useCaSystemImages ''ln -s ${caSystemImages} "$out/system-images"''}
+
               mkdir -p "$out/cmdline-tools"
               cp -r ${androidSdk}/libexec/android-sdk/cmdline-tools/${resolvedCmdLineToolsVersion} "$out/cmdline-tools/"
-              cp -rs ${customEmulator}/libexec/android-sdk/emulator "$out"/emulator
+              ${lib.optionalString (
+                customEmulator != null
+              ) ''cp -rs ${customEmulator}/libexec/android-sdk/emulator "$out"/emulator''}
             '';
 
       wrappedAndroidTools = pkgs.runCommandLocal
@@ -267,7 +282,31 @@ in
           pkgs.android-tools
         ];
         text = ''
-          exec ruby ${../../scripts/rename-emulator-model.rb} "$@"
+          exec ruby -e 'load ARGV.shift' ${../../scripts/rename-emulator-model.rb} "$@"
+        '';
+      };
+
+      refreshAvds = pkgs.writeShellApplication {
+        name = "refresh-avds";
+        runtimeInputs = [ pkgs.ruby ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/refresh-avds.rb} "$@"
+        '';
+      };
+
+      resizeAvd = pkgs.writeShellApplication {
+        name = "resize-avd";
+        runtimeInputs = [ pkgs.ruby ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/resize-avd.rb} "$@"
+        '';
+      };
+
+      cloneAvd = pkgs.writeShellApplication {
+        name = "clone-avd";
+        runtimeInputs = [ pkgs.ruby ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/clone-avd.rb} "$@"
         '';
       };
 
@@ -313,6 +352,9 @@ in
             pkgs.scrcpy
             androidListImages
             renameEmulatorModel
+            refreshAvds
+            resizeAvd
+            cloneAvd
             wrappedAndroidTools
           ]
           ++ lib.optional (customEmulator != null) customEmulator
@@ -361,6 +403,10 @@ in
           ${lib.optionalString includeEmulator ''echo "Nix emulator binary: $(command -v emulator-nix)"''}
           echo "Installed Android packages:"
           sdkmanager --list_installed
+          ${lib.optionalString includeEmulator ''
+            echo "AVD status:"
+            refresh-avds || true
+          ''}
           ${lib.optionalString (includeSources && !effectiveIncludeSources) ''echo "Sources disabled: no sources package for ${lib.concatStringsSep ", " missingSourcePlatforms}"''}
         '';
       };

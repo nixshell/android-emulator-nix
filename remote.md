@@ -3,8 +3,8 @@
 Use a fixed emulator port so the ADB port is predictable:
 
 ```bash
-nix develop .#android-a32-33
-emulator -no-snapshot-load -verbose -show-kernel -gpu host -no-window -avd a33 -port 5554
+nix develop .#a12
+emulator -no-snapshot-load -verbose -show-kernel -gpu host -no-window -avd a32 -port 5554
 ```
 
 Port mapping:
@@ -50,7 +50,7 @@ scrcpy -s localhost:5555
 If the host runs multiple emulators, assign different even console ports:
 
 ```bash
-emulator -avd a33 -port 5554 -no-snapshot-load -gpu host -no-window
+emulator -avd a32 -port 5554 -no-snapshot-load -gpu host -no-window
 emulator -avd other -port 5556 -no-snapshot-load -gpu host -no-window
 ```
 

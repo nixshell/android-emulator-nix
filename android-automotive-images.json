@@ -160,9 +160,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "1b07fe1bc8a4f5a9b249ff12d5bf142cb43a2093",
-              "size": 948247935,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-32_r01.zip"
+              "sha1": "bf93e7e5142c446a215de93f389127f2ac9faf19",
+              "size": 1039230643,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-32_r02.zip"
             }
           ],
           "dependencies": {
@@ -212,9 +212,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "8f8309ae9e25b0c5eeb869bb0cb2515021073693",
-              "size": 1012590435,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-32_r01.zip"
+              "sha1": "20d773a3c4f7757188e0d8359d2f396bc4f06d42",
+              "size": 1068790902,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-32_r02.zip"
             }
           ],
           "dependencies": {
@@ -590,9 +590,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "064b45a3f9d6f5c3ea1596fd58f070401bc006d9",
-              "size": 1424283548,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-35-ext15_r02.zip"
+              "sha1": "57954251f8067926f90e87b8f7bfaaebb14804c0",
+              "size": 1423204133,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-35-ext15_r03.zip"
             }
           ],
           "dependencies": {
@@ -613,7 +613,7 @@
           "path": "system-images/android-35-ext15/android-automotive/arm64-v8a",
           "revision": "35x-android-automotive-arm64-v8a",
           "revision-details": {
-            "major:0": "2"
+            "major:0": "3"
           },
           "type-details": {
             "abi:6": "arm64-v8a",
@@ -642,9 +642,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "8f001c192a680ae783d99bda8e12b52395014511",
-              "size": 1463842473,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-35-ext15_r02.zip"
+              "sha1": "608cbbc33005fb4a13ad041c8a0e76f3033ac0f5",
+              "size": 1461955988,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-35-ext15_r03.zip"
             }
           ],
           "dependencies": {
@@ -665,7 +665,7 @@
           "path": "system-images/android-35-ext15/android-automotive/x86_64",
           "revision": "35x-android-automotive-x86_64",
           "revision-details": {
-            "major:0": "2"
+            "major:0": "3"
           },
           "type-details": {
             "abi:6": "x86_64",
@@ -696,9 +696,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "7062de5c4d849728d9e5e06b1f189c1dd1e341e4",
-              "size": 1485616113,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-35-ext15_playstore_r02.zip"
+              "sha1": "18d0e0be69d9883321d547ce099897196a7d646c",
+              "size": 1516199389,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/arm64-v8a-35-ext15_playstore_r03.zip"
             }
           ],
           "dependencies": {
@@ -719,7 +719,7 @@
           "path": "system-images/android-35-ext15/android-automotive-playstore/arm64-v8a",
           "revision": "35x-android-automotive-playstore-arm64-v8a",
           "revision-details": {
-            "major:0": "2"
+            "major:0": "3"
           },
           "type-details": {
             "abi:6": "arm64-v8a",
@@ -748,9 +748,9 @@
             {
               "arch": "all",
               "os": "all",
-              "sha1": "7487c1fca63109186fdbce4f50e67c228b6a0db1",
-              "size": 1537658008,
-              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-35-ext15_playstore_r02.zip"
+              "sha1": "75df7f594424350bbdb59ef31c9b2e98951993f1",
+              "size": 1567573000,
+              "url": "https://dl.google.com/android/repository/sys-img/android-automotive/x86_64-35-ext15_playstore_r03.zip"
             }
           ],
           "dependencies": {
@@ -771,7 +771,7 @@
           "path": "system-images/android-35-ext15/android-automotive-playstore/x86_64",
           "revision": "35x-android-automotive-playstore-x86_64",
           "revision-details": {
-            "major:0": "2"
+            "major:0": "3"
           },
           "type-details": {
             "abi:6": "x86_64",

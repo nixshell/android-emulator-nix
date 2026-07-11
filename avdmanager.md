@@ -61,7 +61,7 @@ Useful list flags:
 
 ## Practical workflow in this repo
 
-Inside `nix develop .#android-emulator`, the shell puts `avdmanager`, `sdkmanager`, and `emulator` on `PATH`. It also sets `ANDROID_USER_HOME` and `ANDROID_AVD_HOME`.
+Inside a dev shell from this flake (e.g. `nix develop .#a12`), the shell puts `avdmanager`, `sdkmanager`, and `emulator` on `PATH`. It also sets `ANDROID_USER_HOME` and `ANDROID_AVD_HOME`.
 
 1. List available system images:
 

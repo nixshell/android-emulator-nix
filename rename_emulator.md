@@ -18,8 +18,8 @@ Requirements:
 Usage:
 
 ```bash
-nix develop .#android-a32-33b
-rename-emulator-model --avd a33b --model a33b
+nix develop .#a12
+rename-emulator-model --avd a32 --model my-car
 ```
 
 If the AVD does not already have a persistent `system-qemu.img`, the script
@@ -27,13 +27,13 @@ seeds one from the SDK image first. To reset it from the SDK image before
 patching, use:
 
 ```bash
-rename-emulator-model --avd a33b --model a33b --force-seed
+rename-emulator-model --avd a32 --model my-car --force-seed
 ```
 
 Verify with a normal cold boot:
 
 ```bash
-emulator -no-snapshot-load -verbose -show-kernel -gpu host -no-window -avd a33b -port 5556
+emulator -no-snapshot-load -verbose -show-kernel -gpu host -no-window -avd a32 -port 5556
 adb -s emulator-5556 wait-for-device shell getprop ro.product.model
 adb -s emulator-5556 wait-for-device shell getprop ro.product.product.model
 adb devices -l

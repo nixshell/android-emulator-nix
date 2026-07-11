@@ -55,10 +55,14 @@
           };
 
           devShells.a12 = config.android.mkShell {
-            platformVersions = [ "32" ];
-            systemImageTypes = [ "android-automotive-playstore" ];
+            platformVersions = [ "32" "33" ];
+            systemImageTypes = [
+              "android-automotive-playstore"
+              "android-automotive"
+            ];
             abiVersion = "x86_64";
             includeExtras = [ "extras;google;auto" ];
+            contentAddressedSystemImages = true;
             androidUserHome = "$HOME/.android";
             androidAvdHome = "$HOME/.android/avd";
           };

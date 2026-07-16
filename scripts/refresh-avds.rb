@@ -70,8 +70,13 @@ def same_image_elsewhere?(recorded, current_real)
   old_dirs.uniq.all? { |old_dir| dirs_equivalent?(old_dir, current_real) }
 end
 
-PRESERVED_CONFIG_KEYS = ["disk.dataPartition.size", "hw.multi_display_window"].freeze
-PRESERVED_CONFIG_PREFIXES = ["hw.display"].freeze
+PRESERVED_CONFIG_KEYS = [
+  "disk.dataPartition.size",
+  "hw.multi_display_window",
+  "environment.width",
+  "environment.height",
+].freeze
+PRESERVED_CONFIG_PREFIXES = ["hw.display", "hw.lcd."].freeze
 
 def preserved_config(config)
   config.select do |key, _|

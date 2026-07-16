@@ -318,6 +318,14 @@ in
         '';
       };
 
+      setDisplayPreset = pkgs.writeShellApplication {
+        name = "set-display-preset";
+        runtimeInputs = [ pkgs.ruby ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/set-display-preset.rb} "$@"
+        '';
+      };
+
       tracebox = pkgs.callPackage ../../pkgs/tracebox.nix { };
 
       perfettoBridge = pkgs.writeShellApplication {
@@ -375,6 +383,7 @@ in
             resizeAvd
             cloneAvd
             avdConfig
+            setDisplayPreset
             tracebox
             perfettoBridge
             wrappedAndroidTools

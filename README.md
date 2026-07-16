@@ -184,13 +184,34 @@ avd-config --avd a33a --set hw.multi_display_window=no
 ```
 
 Multi-display AVDs (e.g. automotive: head unit, cluster, passenger screens)
-define their screens as `hw.displayN.*` blocks in `config.ini`;
-`hw.multi_display_window` picks between one window per display or a single
-window with the extra displays in Extended Controls. `refresh-avds --apply`
-preserves `hw.display*`, `hw.multi_display_window`, and
+define their screens as `hw.displayN.*` blocks in `config.ini`; the primary
+screen's size also depends on `environment.width`/`environment.height` and
+`hw.lcd.*`, so keep those consistent across AVDs that should share a
+resolution. `hw.multi_display_window` picks between one window per display or
+a single window with the extra displays in Extended Controls. `refresh-avds
+--apply` preserves `hw.display*`, `hw.lcd.*`, `environment.width`,
+`environment.height`, `hw.multi_display_window`, and
 `disk.dataPartition.size` when recreating an AVD.
 
-### 10. Trace with Perfetto
+### 10. Apply the standard display resolution to a new AVD
+
+`avdmanager create avd --device <profile>` only seeds an initial
+`config.ini`; it doesn't guarantee a specific resolution, and AVDs created
+separately (or hand-edited) can drift apart even from the same profile. For
+an AVD that should match a33/a33b's setup — primary display 1920x1080
+@160dpi, second display 3840x1100 @213dpi — apply the preset after creating
+it:
+
+```bash
+set-display-preset --avd a33c
+```
+
+This is a thin wrapper around the exact `avd-config --set ...` block used to
+fix a33/a33b; equivalent to running `avd-config` once per key. Takes effect
+on the AVD's next cold boot. Cloning an existing AVD with `clone-avd`
+(step 8) carries its resolution over automatically and doesn't need this.
+
+### 11. Trace with Perfetto
 
 The shell ships Perfetto's `tracebox` (pinned in
 [pkgs/tracebox.nix](pkgs/tracebox.nix)) and a `perfetto-bridge` command that

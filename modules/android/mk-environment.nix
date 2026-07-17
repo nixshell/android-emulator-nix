@@ -77,6 +77,9 @@ in
       missingSourcePlatforms = builtins.filter (
         platformVersion: !(builtins.elem platformVersion sourcePlatformsAvailable)
       ) resolvedPlatformVersions;
+      availableSourcePlatforms = builtins.filter (
+        platformVersion: builtins.elem platformVersion sourcePlatformsAvailable
+      ) resolvedPlatformVersions;
       effectiveIncludeSources = includeSources && missingSourcePlatforms == [ ];
       effectiveIncludeSystemImages =
         if includeSystemImages != null then includeSystemImages else systemImageTypes != [ ];
@@ -124,20 +127,43 @@ in
 
       androidComposition = pkgs.androidenv.composeAndroidPackages sdkArgs;
       platformTools = androidComposition.platform-tools;
+      compatibleArchives = builtins.filter (
+        archive:
+        let
+          isTargetOs = if builtins.hasAttr "os" archive then archive.os == repoOs || archive.os == "all" else true;
+          isTargetArch =
+            if builtins.hasAttr "arch" archive then archive.arch == repoArch || archive.arch == "all" else true;
+        in
+        isTargetOs && isTargetArch
+      );
+      extraSourcesPackages =
+        if !includeSources || effectiveIncludeSources then
+          [ ]
+        else
+          map (
+            platformVersion:
+            let
+              package = repo.packages.sources.${platformVersion};
+            in
+            androidComposition.deployAndroidPackage {
+              package = package // {
+                archives = map (
+                  archive:
+                  pkgs.fetchurl {
+                    name = builtins.baseNameOf archive.url;
+                    url = archive.url;
+                    sha1 = archive.sha1;
+                  }
+                ) (compatibleArchives package.archives);
+              };
+            }
+          ) availableSourcePlatforms;
       customEmulatorPackageInfo = lib.attrByPath [ "packages" "emulator" resolvedEmulatorVersion ] null repo;
       customEmulatorArchives =
         if customEmulatorPackageInfo == null then
           [ ]
         else
-          builtins.filter (
-            archive:
-            let
-              isTargetOs = if builtins.hasAttr "os" archive then archive.os == repoOs || archive.os == "all" else true;
-              isTargetArch =
-                if builtins.hasAttr "arch" archive then archive.arch == repoArch || archive.arch == "all" else true;
-            in
-            isTargetOs && isTargetArch
-          ) customEmulatorPackageInfo.archives;
+          compatibleArchives customEmulatorPackageInfo.archives;
       fetchedCustomEmulatorPackage =
         if !useCustomEmulator then
           null
@@ -191,7 +217,7 @@ in
       } ''cp -rL --reflink=auto ${androidSdk}/libexec/android-sdk/system-images "$out"'';
 
       runtimeAndroidSdk =
-        if customEmulator == null && !useCaSystemImages then
+        if customEmulator == null && !useCaSystemImages && extraSourcesPackages == [ ] then
           sdkDir
         else
           pkgs.runCommandLocal
@@ -211,6 +237,15 @@ in
               done
 
               ${lib.optionalString useCaSystemImages ''ln -s ${caSystemImages} "$out/system-images"''}
+
+              ${lib.optionalString (extraSourcesPackages != [ ]) ''
+                mkdir -p "$out/sources"
+                ${lib.concatMapStrings (sourcesPackage: ''
+                  for sourcesDir in ${sourcesPackage}/libexec/android-sdk/sources/*; do
+                    ln -s "$sourcesDir" "$out/sources/$(basename "$sourcesDir")"
+                  done
+                '') extraSourcesPackages}
+              ''}
 
               mkdir -p "$out/cmdline-tools"
               cp -r ${androidSdk}/libexec/android-sdk/cmdline-tools/${resolvedCmdLineToolsVersion} "$out/cmdline-tools/"
@@ -438,7 +473,7 @@ in
             echo "AVD status:"
             refresh-avds || true
           ''}
-          ${lib.optionalString (includeSources && !effectiveIncludeSources) ''echo "Sources disabled: no sources package for ${lib.concatStringsSep ", " missingSourcePlatforms}"''}
+          ${lib.optionalString (includeSources && !effectiveIncludeSources) ''echo "No sources package for ${lib.concatStringsSep ", " missingSourcePlatforms}${lib.optionalString (availableSourcePlatforms != [ ]) "; installed sources for ${lib.concatStringsSep ", " availableSourcePlatforms}"}"''}
         '';
       };
     };

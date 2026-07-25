@@ -12,31 +12,15 @@ in
 
   mkAndroidEnvironment =
     {
-      platformVersions ? [
-        "36"
-      ],
-      buildToolsVersion ? "latest",
-      extraBuildToolsVersions ? [
-        "36.0.0"
-      ],
-      cmdLineToolsVersion ? "latest",
-      includeEmulator ? true,
-      emulatorVersion ? "latest",
-      includeNdk ? true,
-      ndkVersion ? "latest",
-      ndkVersions ? [ ndkVersion ],
-      includeCmake ? true,
-      cmakeVersion ? "latest",
-      cmakeVersions ? [ cmakeVersion ],
+      sdk ? { },
+      emulator ? { },
+      ndk ? { },
+      cmake ? { },
       includeSources ? true,
-      includeSystemImages ? null,
-      systemImageTypes ? [ ],
       extraPackages ? [ ],
       includeExtras ? [ ],
       repoJson ? defaultRepoJson,
       repoXmls ? null,
-      contentAddressedSystemImages ? false,
-      abiVersion ? defaultAbiVersion,
       androidUserHome ? "$HOME/.android",
       androidAvdHome ? "$HOME/.android/avd",
       # JDK used for JAVA_HOME / the dev shell. Override from consumers, e.g.
@@ -62,17 +46,81 @@ in
         }
         .${pkgs.stdenv.hostPlatform.system} or "all";
 
-      resolveRepoVersion = key: version: if version == "latest" then repo.latest.${key} else toString version;
+      requirePin =
+        component: enabled: value:
+        if enabled && value == null then
+          throw "Android ${component} is enabled but no version is pinned. Set the version explicitly (run `android-list-versions ${component}` to see the options), or disable it."
+        else
+          value;
 
-      resolvedCmdLineToolsVersion = resolveRepoVersion "cmdline-tools" cmdLineToolsVersion;
-      resolvedEmulatorVersion = resolveRepoVersion "emulator" emulatorVersion;
-      resolvedPlatformVersions = lib.unique (map (resolveRepoVersion "platforms") platformVersions);
-      resolvedBuildToolsVersions = lib.unique (
-        map (resolveRepoVersion "build-tools") ([ buildToolsVersion ] ++ extraBuildToolsVersions)
+      # Nesting the arguments loses Nix's own "unexpected argument" check, so
+      # reinstate it per group — a typo must fail rather than silently default.
+      checkKeys =
+        groupName: known: group:
+        let
+          unknown = builtins.filter (key: !(builtins.elem key known)) (builtins.attrNames group);
+        in
+        if unknown == [ ] then
+          group
+        else
+          throw "Unknown ${groupName} option${lib.optionalString (builtins.length unknown > 1) "s"}: ${lib.concatStringsSep ", " unknown}. Known options: ${lib.concatStringsSep ", " known}.";
+
+      sdkOpts = checkKeys "sdk" [
+        "platformVersions"
+        "buildToolsVersions"
+        "cmdLineToolsVersion"
+      ] sdk;
+      emulatorOpts = checkKeys "emulator" [
+        "version"
+        "enable"
+        "systemImageTypes"
+        "includeSystemImages"
+        "abiVersions"
+        "contentAddressedSystemImages"
+      ] emulator;
+      ndkOpts = checkKeys "ndk" [
+        "versions"
+        "enable"
+      ] ndk;
+      cmakeOpts = checkKeys "cmake" [
+        "versions"
+        "enable"
+      ] cmake;
+
+      platformVersions = sdkOpts.platformVersions or [ ];
+      # First entry is the one Gradle's aapt2 override points at.
+      buildToolsVersions = sdkOpts.buildToolsVersions or [ ];
+      cmdLineToolsVersion =
+        sdkOpts.cmdLineToolsVersion
+          or (throw "sdk.cmdLineToolsVersion is required — it provides sdkmanager/avdmanager. Run `android-list-versions cmdline-tools` to see the options.");
+
+      emulatorVersion = emulatorOpts.version or null;
+      includeEmulator = emulatorOpts.enable or (emulatorVersion != null);
+      systemImageTypes = emulatorOpts.systemImageTypes or [ ];
+      includeSystemImages = emulatorOpts.includeSystemImages or null;
+      # First entry is the primary ABI reported in the shell banner.
+      abiVersions = emulatorOpts.abiVersions or [ defaultAbiVersion ];
+      contentAddressedSystemImages = emulatorOpts.contentAddressedSystemImages or false;
+
+      ndkVersions = ndkOpts.versions or [ ];
+      includeNdk = ndkOpts.enable or (ndkVersions != [ ]);
+      cmakeVersions = cmakeOpts.versions or [ ];
+      includeCmake = cmakeOpts.enable or (cmakeVersions != [ ]);
+
+      resolvedCmdLineToolsVersion = toString cmdLineToolsVersion;
+      resolvedEmulatorVersion = requirePin "emulator" includeEmulator (
+        if emulatorVersion == null then null else toString emulatorVersion
       );
-      resolvedNdkVersion = resolveRepoVersion "ndk" ndkVersion;
-      resolvedNdkVersions = lib.unique (map (resolveRepoVersion "ndk") ndkVersions);
-      resolvedCmakeVersions = lib.unique (map (resolveRepoVersion "cmake") cmakeVersions);
+      resolvedPlatformVersions = lib.unique (map toString platformVersions);
+      resolvedBuildToolsVersions = lib.unique (map toString buildToolsVersions);
+      resolvedAbiVersions = lib.unique (map toString abiVersions);
+      resolvedNdkVersions = requirePin "ndk" includeNdk (
+        if includeNdk && ndkVersions == [ ] then null else lib.unique (map toString ndkVersions)
+      );
+      resolvedNdkVersion = if resolvedNdkVersions == [ ] then null else lib.head resolvedNdkVersions;
+      resolvedCmakeVersions = requirePin "cmake" includeCmake (
+        if includeCmake && cmakeVersions == [ ] then null else lib.unique (map toString cmakeVersions)
+      );
       sourcePlatformsAvailable = builtins.attrNames (repo.packages.sources or { });
       missingSourcePlatforms = builtins.filter (
         platformVersion: !(builtins.elem platformVersion sourcePlatformsAvailable)
@@ -103,7 +151,7 @@ in
         ndkVersion = resolvedNdkVersion;
         ndkVersions = resolvedNdkVersions;
         cmakeVersions = if includeCmake then resolvedCmakeVersions else [ ];
-        abiVersions = [ abiVersion ];
+        abiVersions = resolvedAbiVersions;
 
         includeSystemImages = effectiveIncludeSystemImages;
         inherit systemImageTypes;
@@ -158,7 +206,11 @@ in
               };
             }
           ) availableSourcePlatforms;
-      customEmulatorPackageInfo = lib.attrByPath [ "packages" "emulator" resolvedEmulatorVersion ] null repo;
+      customEmulatorPackageInfo =
+        if resolvedEmulatorVersion == null then
+          null
+        else
+          lib.attrByPath [ "packages" "emulator" resolvedEmulatorVersion ] null repo;
       customEmulatorArchives =
         if customEmulatorPackageInfo == null then
           [ ]
@@ -297,6 +349,48 @@ in
         )
       );
 
+      pinnedVersions = {
+        build-tools = resolvedBuildToolsVersions;
+        cmake = resolvedCmakeVersions;
+        cmdline-tools = [ resolvedCmdLineToolsVersion ];
+        emulator = lib.optional (resolvedEmulatorVersion != null) resolvedEmulatorVersion;
+        ndk = resolvedNdkVersions;
+        platforms = resolvedPlatformVersions;
+      };
+
+      androidVersionCatalogJson = pkgs.writeText "android-version-catalog.json" (
+        builtins.toJSON (
+          lib.flatten (
+            lib.mapAttrsToList (
+              component: versions:
+              lib.mapAttrsToList (version: package: {
+                inherit component version;
+                displayName = package.displayName or "${component} ${version}";
+                latest = (repo.latest.${component} or null) == version;
+                pinned = builtins.elem version (pinnedVersions.${component} or [ ]);
+              }) versions
+            ) repo.packages
+          )
+        )
+      );
+
+      androidListVersions = pkgs.writeShellApplication {
+        name = "android-list-versions";
+        runtimeInputs = [ pkgs.jq ];
+        text = ''
+          component="''${1:-}"
+          jq -r --arg component "$component" '
+            def versionKey:
+              [ .version | scan("[0-9]+|[a-zA-Z]+") | tonumber? // . ];
+            map(select($component == "" or .component == $component)) |
+            sort_by(.component, versionKey)[] |
+            [ (if .pinned then "pinned" else empty end),
+              (if .latest then "upstream-latest" else empty end) ] as $tags |
+            "\(.component)\t\(.version)\t\($tags | join(" "))"
+          ' ${androidVersionCatalogJson}
+        '';
+      };
+
       androidListImages = pkgs.writeShellApplication {
         name = "android-list-images";
         runtimeInputs = [ pkgs.jq ];
@@ -385,10 +479,12 @@ in
     in
     rec {
       inherit
-        abiVersion
+        resolvedAbiVersions
         androidComposition
         androidImageCatalogJson
         androidListImages
+        androidVersionCatalogJson
+        androidListVersions
         androidSdk
         platformTools
         renameEmulatorModel
@@ -413,6 +509,7 @@ in
             pkgs.git-repo
             pkgs.scrcpy
             androidListImages
+            androidListVersions
             renameEmulatorModel
             refreshAvds
             resizeAvd
@@ -459,12 +556,12 @@ in
             export __EGL_VENDOR_LIBRARY_FILENAMES="${"$"}{__EGL_VENDOR_LIBRARY_FILENAMES:-$nvidiaEglVendor}"
             export LD_LIBRARY_PATH="/run/opengl-driver/lib:${"$"}LD_LIBRARY_PATH"
           fi
-          export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=${sdkDir}/build-tools/${lib.head resolvedBuildToolsVersions}/aapt2"
+          ${lib.optionalString (resolvedBuildToolsVersions != [ ]) ''export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=${sdkDir}/build-tools/${lib.head resolvedBuildToolsVersions}/aapt2"''}
           export DIRENV_LOG_FORMAT=""
           ${localProp}
           echo "Android SDK: ${runtimeAndroidSdk}"
           echo "Platforms: ${lib.concatStringsSep ", " resolvedPlatformVersions}"
-          ${lib.optionalString effectiveIncludeSystemImages ''echo "System image types: ${lib.concatStringsSep ", " systemImageTypes} (${abiVersion})"''}
+          ${lib.optionalString effectiveIncludeSystemImages ''echo "System image types: ${lib.concatStringsSep ", " systemImageTypes} (${lib.concatStringsSep ", " resolvedAbiVersions})"''}
           ${lib.optionalString includeEmulator ''echo "Emulator binary: $(command -v emulator)"''}
           ${lib.optionalString includeEmulator ''echo "Nix emulator binary: $(command -v emulator-nix)"''}
           echo "Installed Android packages:"

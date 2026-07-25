@@ -59,22 +59,113 @@ otherwise `nix` will not see them during evaluation.
 Shells are defined in [flake.nix](flake.nix) via `config.android.mkShell`. The
 `a12` shell shows the automotive setup:
 
+Arguments are grouped by the component they configure, so it is clear which
+knobs belong together:
+
 ```nix
 devShells.a12 = config.android.mkShell {
-  platformVersions = [ "32" ];
-  systemImageTypes = [ "android-automotive-playstore" ];
-  abiVersion = "x86_64";
+  sdk = {
+    platformVersions = [ "32" ];
+    buildToolsVersions = [ "36.0.0" ];
+    cmdLineToolsVersion = "19.0";
+  };
+  emulator = {
+    version = "36.5.10";
+    systemImageTypes = [ "android-automotive-playstore" ];
+    abiVersions = [ "x86_64" ];
+  };
+  ndk.versions = [ "28.0.13004108" ];
+  cmake.versions = [ "3.31.6" ];
   includeExtras = [ "extras;google;auto" ];
-  androidUserHome = "$HOME/.android";
-  androidAvdHome = "$HOME/.android/avd";
 };
 ```
 
-`platformVersions`, `systemImageTypes`, and `abiVersion` select the system
-images; `emulatorVersion` (default `"latest"`) selects the emulator build. To
+| Group | Options |
+| --- | --- |
+| `sdk` | `platformVersions`, `buildToolsVersions`, `cmdLineToolsVersion` |
+| `emulator` | `version`, `enable`, `systemImageTypes`, `includeSystemImages`, `abiVersions`, `contentAddressedSystemImages` |
+| `ndk` | `versions`, `enable` |
+| `cmake` | `versions`, `enable` |
+
+Omit a whole group to leave that component out — `mkShell { sdk.cmdLineToolsVersion = "19.0"; }`
+is a valid shell with no platforms, build-tools, emulator, NDK, or CMake. Unknown
+keys inside a group are rejected rather than ignored:
+
+```
+error: Unknown emulator option: systemImageType. Known options: version, enable,
+systemImageTypes, includeSystemImages, abiVersions, contentAddressedSystemImages.
+```
+
+Ungrouped arguments (`includeSources`, `includeExtras`, `extraPackages`,
+`repoJson`, `repoXmls`, `jdk`, `androidUserHome`, `androidAvdHome`) apply to the
+environment as a whole. `androidUserHome` and `androidAvdHome` default to
+`$HOME/.android` and `$HOME/.android/avd`, so set them only when a shell needs
+somewhere else.
+
+All the `*Versions` options take lists. For `sdk.buildToolsVersions` the order
+matters — the first entry is the version Gradle's `aapt2FromMavenOverride`
+points at, and the rest are installed so projects requesting them resolve:
+
+```nix
+sdk.buildToolsVersions = [ "36.0.0" "35.0.0" ];  # Gradle uses 36.0.0's aapt2
+```
+
+The shells currently defined are:
+
+| Shell | What it is |
+| --- | --- |
+| `sdk` (`default`) | Minimal toolchain; components commented out in `flake.nix`, enable by uncommenting a version |
+| `latest` | Every component pinned to upstream nixpkgs' newest, no system images |
+| `a12` | Automotive emulator setup with system images |
+
+`latest` tracks the newest versions upstream offers, but it is still a set of
+hand-written pins — it does not resolve anything at eval time. Refresh it by
+running `android-list-versions` and bumping any row where `pinned` and
+`upstream-latest` have drifted apart. New upstream versions only appear there
+after `nix flake update`.
+
+`sdk.platformVersions`, `emulator.systemImageTypes`, and `emulator.abiVersions`
+select the system images; `emulator.version` selects the emulator build. Version
+arguments no longer accept `"latest"` and are never guessed — you pin them by
+hand.
+
+`emulator.abiVersions` is the CPU architecture of the *system image*
+(`x86_64`, `arm64-v8a`, …). It defaults to the host architecture, so on an
+x86_64 machine you get one x86_64 image; list several to install images for
+several architectures side by side. It has no effect unless
+`emulator.systemImageTypes` is set, and it does not influence the NDK, which
+always builds for all of its target architectures.
+
+Omitting a version argument means *"leave this component out"*, not "pick one
+for me". `sdk.cmdLineToolsVersion` is the one required argument — it provides
+`sdkmanager`/`avdmanager`, which the shell always puts on `PATH`.
+
+Asking for a component without pinning it (`includeNdk = true` with no
+`ndkVersions`) is an error rather than a silent default:
+
+```
+error: Android ndk is enabled but no version is pinned. Set the version
+explicitly (run `android-list-versions ndk` to see the options), or disable it.
+```
+
+To
 see which platform/type/abi combinations the catalog offers, run
 `android-list-images` inside any shell — it lists what *can* be provisioned,
 not what is installed.
+
+To see which versions are available for the pinned components, run
+`android-list-versions` inside any shell. With no argument it lists every
+component; pass one to filter (`build-tools`, `cmake`, `cmdline-tools`,
+`emulator`, `ndk`, `platforms`, …):
+
+```bash
+android-list-versions emulator
+```
+
+Each row is `component<TAB>version<TAB>tags`, sorted by version numerically.
+The version this shell pins is tagged `pinned`, and whatever upstream nixpkgs
+currently considers newest is tagged `upstream-latest` — so a component due for
+a bump is one where those two tags are on different rows.
 
 ### 3. Enter the shell (this is the download step)
 

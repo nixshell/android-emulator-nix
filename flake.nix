@@ -36,35 +36,60 @@
           _module.args.pkgs = pkgs;
 
           devShells.sdk = config.android.mkShell {
-            extraBuildToolsVersions = [
-              # "34.0.0"
-              # "35.0.0"
-              # "36.0.0"
-            ];
-            platformVersions = [
-              # "33"
-              # "34"
-              # "36"
-            ];
-            systemImageTypes = [ ];
+            sdk = {
+              cmdLineToolsVersion = "19.0";
+              buildToolsVersions = [
+                # "36.0.0"
+                # "35.0.0"
+                # "34.0.0"
+              ];
+              platformVersions = [
+                # "36"
+                # "33"
+                # "34"
+              ];
+            };
+            # emulator.version = "36.5.10";
+            # ndk.versions = [ "28.0.13004108" ];
+            # cmake.versions = [ "3.31.6" ];
             includeExtras = [ "extras;google;auto" ];
-            androidUserHome = "$HOME/.android";
-            androidAvdHome = "$HOME/.android/avd";
             extraPackages = [
             ];
           };
 
-          devShells.a12 = config.android.mkShell {
-            platformVersions = [ "32" "33" ];
-            systemImageTypes = [
-              "android-automotive-playstore"
-              "android-automotive"
-            ];
-            abiVersion = "x86_64";
+          # Pinned to what upstream nixpkgs reported as newest when this was
+          # last refreshed. These are hand-updated like every other pin: run
+          # `android-list-versions` and bump the rows tagged upstream-latest.
+          devShells.latest = config.android.mkShell {
+            sdk = {
+              platformVersions = [ "36" ];
+              buildToolsVersions = [ "36.0.0" ];
+              cmdLineToolsVersion = "19.0";
+            };
+            emulator.version = "36.5.10";
+            ndk.versions = [ "28.0.13004108" ];
+            cmake.versions = [ "3.31.6" ];
             includeExtras = [ "extras;google;auto" ];
-            contentAddressedSystemImages = true;
-            androidUserHome = "$HOME/.android";
-            androidAvdHome = "$HOME/.android/avd";
+          };
+
+          devShells.a12 = config.android.mkShell {
+            sdk = {
+              platformVersions = [ "32" "33" ];
+              buildToolsVersions = [ "36.0.0" ];
+              cmdLineToolsVersion = "19.0";
+            };
+            emulator = {
+              version = "36.5.10";
+              systemImageTypes = [
+                "android-automotive-playstore"
+                "android-automotive"
+              ];
+              abiVersions = [ "x86_64" ];
+              contentAddressedSystemImages = true;
+            };
+            ndk.versions = [ "28.0.13004108" ];
+            cmake.versions = [ "3.31.6" ];
+            includeExtras = [ "extras;google;auto" ];
           };
 
           devShells.default = config.devShells.sdk;

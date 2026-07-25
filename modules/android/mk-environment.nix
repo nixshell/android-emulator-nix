@@ -73,6 +73,8 @@ in
       emulatorOpts = checkKeys "emulator" [
         "version"
         "enable"
+        "platformVersions"
+        "images"
         "systemImageTypes"
         "includeSystemImages"
         "abiVersions"
@@ -96,7 +98,39 @@ in
 
       emulatorVersion = emulatorOpts.version or null;
       includeEmulator = emulatorOpts.enable or (emulatorVersion != null);
+      # Each platform x type combination is multiple GB, so `images` maps a
+      # platform to exactly the types wanted for it:
+      #
+      #   images = { "36" = [ "google_apis" ]; "33" = [ "android-automotive" ]; };
+      #
+      # `platformVersions` + `systemImageTypes` is the coarser shorthand: it
+      # gives every listed platform the same set of types.
+      emulatorPlatformVersions = emulatorOpts.platformVersions or platformVersions;
       systemImageTypes = emulatorOpts.systemImageTypes or [ ];
+      imagesFromLists = lib.genAttrs (map toString emulatorPlatformVersions) (_: systemImageTypes);
+      # Upstream silently skips platform/type pairs it has no archive for, which
+      # turns a typo or an unavailable combination into a missing image rather
+      # than an error. An explicit `images` request is checked against the
+      # catalog; the shorthand is not, since crossing lists is expected to hit
+      # combinations that do not exist.
+      checkImageAvailable =
+        platform: types:
+        let
+          available = builtins.attrNames (repo.images.${platform} or { });
+          missing = builtins.filter (type: !(builtins.elem type available)) types;
+        in
+        if available == [ ] then
+          throw "No system images for platform ${platform}. Run `android-list-images` to see what is available."
+        else if missing != [ ] then
+          throw "No ${lib.concatStringsSep ", " missing} system image for platform ${platform}. Available for ${platform}: ${lib.concatStringsSep ", " available}."
+        else
+          types;
+      requestedImages = lib.filterAttrs (_: types: types != [ ]) (
+        if emulatorOpts ? images then
+          lib.mapAttrs (platform: types: checkImageAvailable platform (lib.toList types)) emulatorOpts.images
+        else
+          imagesFromLists
+      );
       includeSystemImages = emulatorOpts.includeSystemImages or null;
       # First entry is the primary ABI reported in the shell banner.
       abiVersions = emulatorOpts.abiVersions or [ defaultAbiVersion ];
@@ -112,6 +146,10 @@ in
         if emulatorVersion == null then null else toString emulatorVersion
       );
       resolvedPlatformVersions = lib.unique (map toString platformVersions);
+      resolvedEmulatorPlatformVersions = builtins.attrNames requestedImages;
+      # Platforms that only exist to carry a system image still need their
+      # platform package present for avdmanager to resolve the target.
+      allPlatformVersions = lib.unique (resolvedPlatformVersions ++ resolvedEmulatorPlatformVersions);
       resolvedBuildToolsVersions = lib.unique (map toString buildToolsVersions);
       resolvedAbiVersions = lib.unique (map toString abiVersions);
       resolvedNdkVersions = requirePin "ndk" includeNdk (
@@ -130,7 +168,7 @@ in
       ) resolvedPlatformVersions;
       effectiveIncludeSources = includeSources && missingSourcePlatforms == [ ];
       effectiveIncludeSystemImages =
-        if includeSystemImages != null then includeSystemImages else systemImageTypes != [ ];
+        if includeSystemImages != null then includeSystemImages else requestedImages != { };
 
       customEmulatorVersions = [
         "36.5.10"
@@ -146,15 +184,17 @@ in
           repoXmls
           ;
 
-        platformVersions = resolvedPlatformVersions;
+        platformVersions = allPlatformVersions;
         buildToolsVersions = resolvedBuildToolsVersions;
         ndkVersion = resolvedNdkVersion;
         ndkVersions = resolvedNdkVersions;
         cmakeVersions = if includeCmake then resolvedCmakeVersions else [ ];
         abiVersions = resolvedAbiVersions;
 
-        includeSystemImages = effectiveIncludeSystemImages;
-        inherit systemImageTypes;
+        # Images come from imageComposition below, which crosses only
+        # resolvedEmulatorPlatformVersions with systemImageTypes.
+        includeSystemImages = false;
+        systemImageTypes = [ ];
         includeSources = effectiveIncludeSources;
 
         includeEmulator =
@@ -174,6 +214,46 @@ in
       };
 
       androidComposition = pkgs.androidenv.composeAndroidPackages sdkArgs;
+
+      # composeAndroidPackages only crosses one platform list with one type list,
+      # so build a composition per distinct type-set and merge the results. That
+      # is what lets `images` request different types per platform. Everything
+      # unrelated is switched off, so these only add system-images derivations.
+      imageCompositions = map (
+        typeSet:
+        pkgs.androidenv.composeAndroidPackages (
+          sdkArgs
+          // {
+            platformVersions = lib.attrNames (
+              lib.filterAttrs (_: types: types == typeSet) requestedImages
+            );
+            includeSystemImages = true;
+            systemImageTypes = typeSet;
+            buildToolsVersions = [ ];
+            cmakeVersions = [ ];
+            ndkVersions = [ ];
+            includeSources = false;
+            includeEmulator = false;
+            includeNDK = false;
+            includeExtras = [ ];
+          }
+        )
+      ) (lib.unique (lib.attrValues requestedImages));
+
+      systemImages = pkgs.runCommandLocal "android-system-images" { } ''
+        mkdir -p "$out"
+        ${lib.concatMapStrings (composition: ''
+          for platformDir in ${composition.androidsdk}/libexec/android-sdk/system-images/*; do
+            platformBase="$(basename "$platformDir")"
+            mkdir -p "$out/$platformBase"
+            for typeDir in "$platformDir"/*; do
+              ln -sfn "$typeDir" "$out/$platformBase/$(basename "$typeDir")"
+            done
+          done
+        '') imageCompositions}
+      '';
+      systemImagesDir = "${systemImages}";
+
       platformTools = androidComposition.platform-tools;
       compatibleArchives = builtins.filter (
         archive:
@@ -266,10 +346,10 @@ in
         __contentAddressed = true;
         outputHashAlgo = "sha256";
         outputHashMode = "recursive";
-      } ''cp -rL --reflink=auto ${androidSdk}/libexec/android-sdk/system-images "$out"'';
+      } ''cp -rL --reflink=auto ${systemImagesDir} "$out"'';
 
       runtimeAndroidSdk =
-        if customEmulator == null && !useCaSystemImages && extraSourcesPackages == [ ] then
+        if customEmulator == null && !effectiveIncludeSystemImages && extraSourcesPackages == [ ] then
           sdkDir
         else
           pkgs.runCommandLocal
@@ -288,7 +368,8 @@ in
                   esac
               done
 
-              ${lib.optionalString useCaSystemImages ''ln -s ${caSystemImages} "$out/system-images"''}
+              ${lib.optionalString (effectiveIncludeSystemImages && useCaSystemImages) ''ln -s ${caSystemImages} "$out/system-images"''}
+              ${lib.optionalString (effectiveIncludeSystemImages && !useCaSystemImages) ''ln -s ${systemImagesDir} "$out/system-images"''}
 
               ${lib.optionalString (extraSourcesPackages != [ ]) ''
                 mkdir -p "$out/sources"
@@ -496,7 +577,7 @@ in
         runtimeAndroidSdk
         sdkArgs
         sdkDir
-        systemImageTypes
+        requestedImages
         wrappedAndroidTools
         ;
 
@@ -561,7 +642,7 @@ in
           ${localProp}
           echo "Android SDK: ${runtimeAndroidSdk}"
           echo "Platforms: ${lib.concatStringsSep ", " resolvedPlatformVersions}"
-          ${lib.optionalString effectiveIncludeSystemImages ''echo "System image types: ${lib.concatStringsSep ", " systemImageTypes} (${lib.concatStringsSep ", " resolvedAbiVersions})"''}
+          ${lib.optionalString effectiveIncludeSystemImages ''echo "System images (${lib.concatStringsSep ", " resolvedAbiVersions}): ${lib.concatStringsSep "; " (lib.mapAttrsToList (platform: types: "${platform} -> ${lib.concatStringsSep ", " types}") requestedImages)}"''}
           ${lib.optionalString includeEmulator ''echo "Emulator binary: $(command -v emulator)"''}
           ${lib.optionalString includeEmulator ''echo "Nix emulator binary: $(command -v emulator-nix)"''}
           echo "Installed Android packages:"

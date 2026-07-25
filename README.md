@@ -71,7 +71,7 @@ devShells.a12 = config.android.mkShell {
   };
   emulator = {
     version = "36.5.10";
-    systemImageTypes = [ "android-automotive-playstore" ];
+    images."32" = [ "android-automotive-playstore" ];
     abiVersions = [ "x86_64" ];
   };
   ndk.versions = [ "28.0.13004108" ];
@@ -83,7 +83,7 @@ devShells.a12 = config.android.mkShell {
 | Group | Options |
 | --- | --- |
 | `sdk` | `platformVersions`, `buildToolsVersions`, `cmdLineToolsVersion` |
-| `emulator` | `version`, `enable`, `systemImageTypes`, `includeSystemImages`, `abiVersions`, `contentAddressedSystemImages` |
+| `emulator` | `version`, `enable`, `images`, `platformVersions`, `systemImageTypes`, `includeSystemImages`, `abiVersions`, `contentAddressedSystemImages` |
 | `ndk` | `versions`, `enable` |
 | `cmake` | `versions`, `enable` |
 
@@ -124,17 +124,54 @@ running `android-list-versions` and bumping any row where `pinned` and
 `upstream-latest` have drifted apart. New upstream versions only appear there
 after `nix flake update`.
 
-`sdk.platformVersions`, `emulator.systemImageTypes`, and `emulator.abiVersions`
-select the system images; `emulator.version` selects the emulator build. Version
-arguments no longer accept `"latest"` and are never guessed — you pin them by
-hand.
+`emulator.version` selects the emulator build. Version arguments no longer
+accept `"latest"` and are never guessed — you pin them by hand.
+
+### Choosing system images
+
+Every platform/type combination is a separate multi-GB download, so
+`emulator.images` maps each platform to exactly the types wanted for it:
+
+```nix
+emulator.images = {
+  "32" = [ "android-automotive-playstore" ];
+  "33" = [ "android-automotive" ];
+  "35" = [ "google_apis" "google_apis_playstore" ];
+};
+```
+
+That installs three platforms' worth of images and nothing else. The older
+`emulator.platformVersions` + `emulator.systemImageTypes` pair still works as a
+shorthand, but it gives *every* listed platform *every* listed type — five types
+across three platforms is up to fifteen images, which is how a shell ends up
+downloading 37 GB to use three of them.
+
+Platforms named only in `images` are added to the SDK automatically, so they do
+not need repeating under `sdk.platformVersions`.
+
+Not every type exists for every platform — API 32 has
+`android-automotive-playstore` but no plain `android-automotive`. Upstream
+silently skips combinations it has no archive for, so `images` validates the
+request instead:
+
+```
+error: No android-automotive system image for platform 32. Available for 32:
+android-automotive-playstore, default, google_apis, google_apis_playstore.
+```
+
+Run `android-list-images` to see every platform/type/abi the catalog offers.
+
+`google_apis` images are rootable (`adb root` works) but have no Play Store app;
+`google_apis_playstore` images ship the Play Store but are production-signed, so
+rooting is blocked. Install both for a platform if you need each at different
+times.
 
 `emulator.abiVersions` is the CPU architecture of the *system image*
 (`x86_64`, `arm64-v8a`, …). It defaults to the host architecture, so on an
 x86_64 machine you get one x86_64 image; list several to install images for
-several architectures side by side. It has no effect unless
-`emulator.systemImageTypes` is set, and it does not influence the NDK, which
-always builds for all of its target architectures.
+several architectures side by side. It has no effect unless images are
+requested, and it does not influence the NDK, which always builds for all of its
+target architectures.
 
 Omitting a version argument means *"leave this component out"*, not "pick one
 for me". `sdk.cmdLineToolsVersion` is the one required argument — it provides

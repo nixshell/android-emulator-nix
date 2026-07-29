@@ -528,11 +528,27 @@ in
         '';
       };
 
+      defaultAvdSetupProfile = ../../profiles/automotive-1920x1080-160dpi;
+
       setDisplayPreset = pkgs.writeShellApplication {
         name = "set-display-preset";
         runtimeInputs = [ pkgs.ruby ];
         text = ''
-          exec ruby -e 'load ARGV.shift' ${../../scripts/set-display-preset.rb} "$@"
+          exec ruby -e 'load ARGV.shift' ${../../scripts/set-display-preset.rb} \
+            --profile ${defaultAvdSetupProfile}/profile.rb "$@"
+        '';
+      };
+
+      setupAvd = pkgs.writeShellApplication {
+        name = "setup-avd";
+        runtimeInputs = [
+          pkgs.ruby
+          wrappedAndroidTools
+          setDisplayPreset
+        ];
+        text = ''
+          exec ruby -e 'load ARGV.shift' ${../../scripts/setup-avd.rb} \
+            --profile ${defaultAvdSetupProfile}/profile.rb "$@"
         '';
       };
 
@@ -597,6 +613,7 @@ in
             cloneAvd
             avdConfig
             setDisplayPreset
+            setupAvd
             tracebox
             perfettoBridge
             wrappedAndroidTools

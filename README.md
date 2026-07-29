@@ -13,6 +13,13 @@ Everything (SDK, emulator binary, system images) is downloaded by nix when you
 enter a dev shell. There is no `sdkmanager --install` step; the SDK lives
 read-only in the nix store.
 
+## Installing on a new machine
+
+Follow [NEW_MACHINE.md](NEW_MACHINE.md) for the complete clean-machine setup:
+prerequisites, cloning, downloading the Nix SDK, creating `a33a`/`a33b`,
+installing the custom display profile, launching both emulators, and verifying
+that Android Studio leaves their resolution unchanged.
+
 ## Workflow: from new upstream image to running emulator
 
 ### 1. Update the pinned image catalog
@@ -218,6 +225,26 @@ and `ANDROID_AVD_HOME`, and prints the installed packages on entry
 
 ### 4. Create an AVD from the image
 
+For the repository's standard Android 33 Automotive AVD, use the idempotent
+setup command. Its only argument is the AVD name:
+
+```bash
+setup-avd a33a
+setup-avd a33b
+```
+
+It creates a missing AVD, installs and applies the named
+`automotive-1920x1080-160dpi` setup profile, and verifies the result. An
+existing AVD is updated only when it already uses the expected system-image
+package; userdata is never wiped.
+
+Each setup profile is self-contained under `profiles/<name>/`. Its
+`profile.rb` defines the system image, seed device, and expected AVD config;
+its `device.xml` is the Android hardware-profile definition. The generic
+`setup-avd` and `set-display-preset` commands load the same profile script.
+
+For other images and hardware profiles, use `avdmanager` directly:
+
 ```bash
 avdmanager list device        # pick a hardware profile
 avdmanager create avd \
@@ -321,23 +348,39 @@ a single window with the extra displays in Extended Controls. `refresh-avds
 `environment.height`, `hw.multi_display_window`, and
 `disk.dataPartition.size` when recreating an AVD.
 
-### 10. Apply the standard display resolution to a new AVD
+### 10. Apply the standard Automotive display profile
 
-`avdmanager create avd --device <profile>` only seeds an initial
-`config.ini`; it doesn't guarantee a specific resolution, and AVDs created
-separately (or hand-edited) can drift apart even from the same profile. For
-an AVD that should match a33/a33b's setup — primary display 1920x1080
-@160dpi, second display 3840x1100 @213dpi — apply the preset after creating
-it:
+Android Studio validates an AVD's `config.ini` against its linked hardware
+profile. Changing only `hw.lcd.*` while leaving the AVD linked to Google's
+built-in `automotive_1080p_landscape` profile causes Studio to restore that
+profile's 1080x600 @120dpi values.
+
+For an AVD that should match a33/a33b's setup — primary display 1920x1080
+@160dpi, second display 3840x1100 @213dpi — run:
 
 ```bash
 set-display-preset --avd a33c
 ```
 
-This is a thin wrapper around the exact `avd-config --set ...` block used to
-fix a33/a33b; equivalent to running `avd-config` once per key. Takes effect
-on the AVD's next cold boot. Cloning an existing AVD with `clone-avd`
-(step 8) carries its resolution over automatically and doesn't need this.
+The command installs or updates the repository's custom profile in
+`$ANDROID_USER_HOME/devices.xml`, preserving other custom profiles, binds the
+selected AVD to it, and writes the complete display preset. It does not
+recreate the AVD or touch userdata. The display changes take effect on the
+next cold boot.
+
+The installed profile also appears in `avdmanager list device` as
+`automotive_1920x1080_160dpi`, so it can be selected while creating an AVD:
+
+```bash
+avdmanager create avd \
+  --name a33c \
+  --device automotive_1920x1080_160dpi \
+  --package 'system-images;android-33;android-automotive;x86_64'
+set-display-preset --avd a33c
+```
+
+Cloning an existing configured AVD with `clone-avd` (step 8) carries the
+profile linkage and resolution over automatically.
 
 ### 11. Trace with Perfetto
 
@@ -355,6 +398,7 @@ devices/emulators appear via the WebSocket connection
 
 ## Docs
 
+- [NEW_MACHINE.md](NEW_MACHINE.md) — complete clean-machine installation and verification
 - [avdmanager.md](avdmanager.md) — `avdmanager` reference and AVD workflow
 - [remote.md](remote.md) — remote/headless emulator access via SSH forwarding
 - [rename_emulator.md](rename_emulator.md) — patching an AVD's reported model name

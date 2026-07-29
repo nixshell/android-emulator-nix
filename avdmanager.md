@@ -63,6 +63,17 @@ Useful list flags:
 
 Inside a dev shell from this flake (e.g. `nix develop .#a12`), the shell puts `avdmanager`, `sdkmanager`, and `emulator` on `PATH`. It also sets `ANDROID_USER_HOME` and `ANDROID_AVD_HOME`.
 
+For the repository's standard Android 33 Automotive configuration, prefer the
+safe, idempotent wrapper:
+
+```bash
+setup-avd NAME
+```
+
+It creates a missing AVD, applies the named
+`automotive-1920x1080-160dpi` setup profile, and verifies the result without
+recreating an existing AVD or wiping userdata.
+
 1. List available system images:
 
 ```bash
@@ -74,6 +85,10 @@ android-list-images
 ```bash
 avdmanager list device
 ```
+
+For this repository's 1920x1080 @160dpi Automotive profile, first register
+and apply it to an AVD with `set-display-preset --avd NAME`. It will then
+appear here as `automotive_1920x1080_160dpi`.
 
 3. Create an AVD:
 

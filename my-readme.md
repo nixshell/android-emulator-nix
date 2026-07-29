@@ -1,1 +1,2 @@
-set-display-preset --avd a33a --avd a33b
+setup-avd a33a
+setup-avd a33b
